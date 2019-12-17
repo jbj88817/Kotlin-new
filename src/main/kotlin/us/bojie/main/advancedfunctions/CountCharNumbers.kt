@@ -3,7 +3,7 @@ package us.bojie.main.advancedfunctions
 import java.io.File
 
 fun main() {
-    File("build.gradle").readText()
+    File("build.gradle.kts").readText()
         .toCharArray()
         .filterNot(Char::isWhitespace)
         .groupBy { it }
