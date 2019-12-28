@@ -1,7 +1,14 @@
 package us.bojie.main.anno
 
 import com.google.gson.Gson
+import com.google.gson.stream.JsonReader
 import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.lang.StringBuilder
+import java.lang.reflect.Proxy
+import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.functions
+import kotlin.reflect.full.valueParameters
 
 data class User(
     var login: String,
@@ -50,13 +57,49 @@ interface GitHubApi {
 }
 
 object RetorApi {
-    const val PATH_PATTERN = """(\{\w+)\})"""
+    const val PATH_PATTERN = """(\{(\w+)\})"""
 
     val okHttp = OkHttpClient()
     val gson = Gson()
 
-    inline fun <reified T> create(): T {
+    val enclosing = { cls: Class<*> ->
+        var curCls: Class<*>? = cls
+        sequence {
+            while (curCls != null) {
+                curCls = curCls?.also { yield(it) }?.enclosingClass
+            }
+        }
+    }
 
+    inline fun <reified T> create(): T {
+        val functionMap = T::class.functions.map { it.name to it }.toMap()
+        val interfaces = enclosing(T::class.java).takeWhile { it.isInterface }.toList()
+        val apiPath = interfaces.foldRight(StringBuilder()) { clazz, acc ->
+            acc.append(clazz.getAnnotation(Api::class.java)
+                ?.url?.takeIf { it.isNotEmpty() }
+                ?: clazz.name).append("/")
+        }.toString()
+
+        return Proxy.newProxyInstance(RetorApi.javaClass.classLoader, arrayOf(T::class.java)) { proxy, method, args ->
+            functionMap[method.name]?.takeIf { it.isAbstract }?.let { function ->
+                val parameterMap = function.valueParameters.map {
+                    it.name to args[it.index - 1]
+                }.toMap()
+                // {name}
+                val endPoint = function.findAnnotation<Get>()!!.url.takeIf { it.isNotEmpty() } ?: function.name
+                val compiledEndPoint = Regex(PATH_PATTERN).findAll(endPoint).map { matchResult ->
+                    matchResult.groups[1]!!.range to parameterMap[matchResult.groups[2]!!.value]
+                }.fold(endPoint) { acc, pair ->
+                    acc.replaceRange(pair.first, pair.second.toString())
+                }
+                val url = apiPath + compiledEndPoint
+                println(url)
+
+                okHttp.newCall(Request.Builder().url(url).get().build()).execute().body()?.charStream()?.use {
+                    gson.fromJson(JsonReader(it), method.genericReturnType)
+                }
+            }
+        } as T
     }
 }
 
