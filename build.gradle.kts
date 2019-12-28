@@ -20,6 +20,7 @@ repositories {
 
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("com.squareup.retrofit2:retrofit:2.6.3")
     implementation("com.squareup.retrofit2:converter-gson:2.6.3")
     implementation("com.google.code.gson:gson:2.8.1")
