@@ -23,6 +23,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("com.squareup.retrofit2:retrofit:2.6.3")
     implementation("com.squareup.retrofit2:converter-gson:2.6.3")
+    implementation("com.squareup.okhttp3:okhttp:3.14.0")
     implementation("com.google.code.gson:gson:2.8.1")
     testCompile(group = "junit", name = "junit", version = "4.12")
 }
